@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Crown, User, Swords, BadgeCheck } from "lucide-react";
+import { Play, Swords, Trophy, Crown } from "lucide-react";
 
 type Player = {
   id: number;
@@ -14,7 +14,9 @@ type Player = {
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [queue, setQueue] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   // 📱 Telegram safe init
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function Home() {
     await supabase.from("players").upsert({
       telegram_id: tgUser.id,
       rank: 1000,
-      role: "newbie",
+      role: "rookie",
       mains: "none",
     });
   };
@@ -58,78 +60,117 @@ export default function Home() {
     if (user) createProfile(user);
   }, [user]);
 
-  // 🏅 tier system
-  function getTier(rank: number) {
-    if (rank >= 3000) return "A - Мифик";
-    if (rank >= 2000) return "B - Легенда";
-    return "C - Эпик";
-  }
+  // 🎮 join queue
+  const joinQueue = async () => {
+    if (!user) return;
 
-  // 🎨 border colors
-  function getBorder(rank: number) {
-    if (rank >= 3000) return "border-yellow-400";
-    if (rank >= 2000) return "border-blue-400";
-    return "border-purple-500";
-  }
+    setLoading(true);
+
+    const newPlayer = {
+      telegram_id: user.id,
+      rank: 1000,
+      role: "player",
+      mains: "none",
+    };
+
+    const { data } = await supabase
+      .from("players")
+      .select("*")
+      .eq("telegram_id", user.id)
+      .single();
+
+    if (data) {
+      setQueue((q) => [...q, data]);
+    }
+
+    setLoading(false);
+  };
+
+  // ⚔️ simulate match
+  const startMatch = async () => {
+    if (queue.length < 2) return;
+
+    const p1 = queue[0];
+    const p2 = queue[1];
+
+    const winner = Math.random() > 0.5 ? p1 : p2;
+    const loser = winner.id === p1.id ? p2 : p1;
+
+    // update ranks
+    await supabase
+      .from("players")
+      .update({ rank: winner.rank + 50 })
+      .eq("id", winner.id);
+
+    await supabase
+      .from("players")
+      .update({ rank: loser.rank - 30 })
+      .eq("id", loser.id);
+
+    setQueue([]);
+    loadPlayers();
+  };
 
   return (
-    <div className="min-h-screen text-white p-6 bg-gradient-to-br from-black via-purple-950 to-black">
+    <div className="min-h-screen bg-black text-white p-6">
 
-      {/* 🏆 HEADER */}
-      <h1 className="text-3xl font-bold text-purple-300 mb-6">
-        🏆 Leaderboard
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold text-purple-300 flex items-center gap-2 mb-4">
+        <Trophy /> ARENA
       </h1>
 
-      {/* 🎴 CARDS */}
-      <div className="flex flex-col gap-3">
+      {/* PLAY BUTTON */}
+      <button
+        onClick={joinQueue}
+        className="bg-purple-600 hover:bg-purple-500 px-5 py-3 rounded-xl flex items-center gap-2 mb-4"
+      >
+        <Play /> Play
+      </button>
 
-        {players.length === 0 ? (
-          <p className="text-gray-400">Нет игроков</p>
+      {/* START MATCH */}
+      <button
+        onClick={startMatch}
+        className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl flex items-center gap-2 mb-6"
+      >
+        <Swords /> Start Match
+      </button>
+
+      {/* QUEUE */}
+      <div className="mb-6">
+        <h2 className="text-purple-300 mb-2">⚔️ Queue</h2>
+
+        {queue.length === 0 ? (
+          <p className="text-gray-400">empty</p>
         ) : (
-          players.map((p, index) => (
-            <div
-              key={p.id}
-              className={`p-5 rounded-2xl border ${getBorder(p.rank)}
-              bg-white/5 backdrop-blur-md
-              shadow-lg hover:scale-[1.02] transition`}
-            >
-
-              {/* 👑 TOP 1 */}
-              {index === 0 && (
-                <div className="flex items-center gap-2 text-yellow-300 font-bold mb-2">
-                  <Crown size={18} />
-                  TOP 1
-                </div>
-              )}
-
-              <p className="flex items-center gap-2 text-purple-300 text-sm">
-                <User size={14} />
-                {p.telegram_id}
-              </p>
-
-              <p className="flex items-center gap-2 text-purple-200 font-bold text-lg mt-1">
-                <BadgeCheck size={16} />
-                Rank: {p.rank}
-              </p>
-
-              <p className="text-purple-300 mt-1">
-                🏅 {getTier(p.rank)}
-              </p>
-
-              <p className="flex items-center gap-2 text-purple-300 mt-1">
-                <Swords size={14} />
-                Role: {p.role}
-              </p>
-
-              <p className="text-purple-300">
-                🎮 Mains: {p.mains}
-              </p>
-
+          queue.map((q) => (
+            <div key={q.id} className="p-2 bg-purple-900/30 rounded mb-1">
+              {q.telegram_id}
             </div>
           ))
         )}
-
       </div>
+
+      {/* LEADERBOARD */}
+      <h2 className="text-purple-300 mb-2">🏆 Leaderboard</h2>
+
+      <div className="flex flex-col gap-3">
+        {players.map((p, i) => (
+          <div
+            key={p.id}
+            className="p-4 rounded-xl bg-white/5 border border-purple-500/30"
+          >
+            {i === 0 && (
+              <div className="text-yellow-300 flex items-center gap-1">
+                <Crown size={16} /> TOP 1
+              </div>
+            )}
+
+            <div>ID: {p.telegram_id}</div>
+            <div>Rank: {p.rank}</div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
