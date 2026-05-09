@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Crown, User, Swords, BadgeCheck } from "lucide-react";
 
 type Player = {
   id: number;
@@ -15,7 +16,7 @@ export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [user, setUser] = useState<any>(null);
 
-  // 📱 безопасно подключаем Telegram только в браузере
+  // 📱 Telegram safe init
   useEffect(() => {
     const init = async () => {
       if (typeof window !== "undefined") {
@@ -23,11 +24,10 @@ export default function Home() {
         setUser(WebApp.initDataUnsafe?.user || null);
       }
     };
-
     init();
   }, []);
 
-  // 📦 загрузка игроков
+  // 📦 load leaderboard
   const loadPlayers = async () => {
     const { data } = await supabase
       .from("players")
@@ -38,7 +38,7 @@ export default function Home() {
     if (data) setPlayers(data);
   };
 
-  // 👤 автопрофиль (без падений SSR)
+  // 👤 auto profile
   const createProfile = async (tgUser: any) => {
     if (!tgUser) return;
 
@@ -55,19 +55,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      createProfile(user);
-    }
+    if (user) createProfile(user);
   }, [user]);
 
-  // 🏅 тиры
+  // 🏅 tier system
   function getTier(rank: number) {
     if (rank >= 3000) return "A - Мифик";
     if (rank >= 2000) return "B - Легенда";
     return "C - Эпик";
   }
 
-  // 🎨 цвета
+  // 🎨 border colors
   function getBorder(rank: number) {
     if (rank >= 3000) return "border-yellow-400";
     if (rank >= 2000) return "border-blue-400";
@@ -75,14 +73,14 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen text-white p-6 bg-gradient-to-br from-black via-purple-950 to-black">
 
-      {/* 🏆 header */}
-      <h1 className="text-2xl font-bold text-purple-300 mb-6">
+      {/* 🏆 HEADER */}
+      <h1 className="text-3xl font-bold text-purple-300 mb-6">
         🏆 Leaderboard
       </h1>
 
-      {/* 🎴 cards */}
+      {/* 🎴 CARDS */}
       <div className="flex flex-col gap-3">
 
         {players.length === 0 ? (
@@ -92,31 +90,35 @@ export default function Home() {
             <div
               key={p.id}
               className={`p-5 rounded-2xl border ${getBorder(p.rank)}
-              bg-gradient-to-br from-purple-900/40 via-black to-purple-950
-              shadow-xl hover:scale-[1.02] transition`}
+              bg-white/5 backdrop-blur-md
+              shadow-lg hover:scale-[1.02] transition`}
             >
 
               {/* 👑 TOP 1 */}
               {index === 0 && (
-                <div className="text-yellow-300 font-bold mb-2">
-                  👑 TOP 1
+                <div className="flex items-center gap-2 text-yellow-300 font-bold mb-2">
+                  <Crown size={18} />
+                  TOP 1
                 </div>
               )}
 
-              <p className="text-xs text-purple-300">
-                🆔 {p.telegram_id}
+              <p className="flex items-center gap-2 text-purple-300 text-sm">
+                <User size={14} />
+                {p.telegram_id}
               </p>
 
-              <p className="text-xl font-bold text-purple-200">
-                🏆 Rank: {p.rank}
+              <p className="flex items-center gap-2 text-purple-200 font-bold text-lg mt-1">
+                <BadgeCheck size={16} />
+                Rank: {p.rank}
               </p>
 
-              <p className="text-purple-300">
+              <p className="text-purple-300 mt-1">
                 🏅 {getTier(p.rank)}
               </p>
 
-              <p className="text-purple-300">
-                🎭 Role: {p.role}
+              <p className="flex items-center gap-2 text-purple-300 mt-1">
+                <Swords size={14} />
+                Role: {p.role}
               </p>
 
               <p className="text-purple-300">
